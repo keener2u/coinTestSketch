@@ -1,5 +1,8 @@
 #include <ESP8266WiFi.h>
-
+//#define LED_PIN1 D4
+//#define LED_PIN2 D8
+//#define IR_SEND D3
+//#define DIGITAL_PIN D5
 //////////////////////
 // WiFi Definitions //
 //////////////////////
@@ -10,9 +13,9 @@ const char WiFiAPPSK[] = "coinpass";
 /////////////////////
 const int LED_PIN1 = D4; // Thing's onboard, green LED
 const int LED_PIN2 = D8;
-const int IR_PIN=D3
+const int IR_SEND=D3;
 const int ANALOG_PIN = A0; // The only analog pin on the Thing
-const int DIGITAL_PIN = 12; // Digital pin to be read\
+const int DIGITAL_PIN = D5; // Digital pin to be read\
 
 WiFiServer server(80);
 
@@ -48,8 +51,11 @@ void loop()
   // Otherwise request will be invalid. We'll say as much in HTML
 
   // Set GPIO5 according to the request
-  if (val >= 0)
-    digitalWrite(LED_PIN1, val);
+  if (val >= 0){
+   digitalWrite(LED_PIN2, val);
+   digitalWrite(IR_SEND, val);
+   digitalWrite(LED_PIN1, val);
+  }
 
   client.flush();
 
@@ -84,15 +90,6 @@ void loop()
 
   // The client will actually be disconnected 
   // when the function returns and 'client' object is detroyed
-    for (int i = 0; i < 20; i++)
-  {
-    digitalWrite(LED_PIN2, LOW);
-    digitalWrite(IR_PIN2, HIGH);
-    delay(100);
-    digitalWrite(LED_PIN2, HIGH);
-    digitalWrite(IR_PIN2, LOW);
-    delay(100);
-  }
   
 }
 
@@ -122,9 +119,12 @@ void initHardware()
 {
   Serial.begin(115200);
   pinMode(DIGITAL_PIN, INPUT_PULLUP);
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
+  pinMode(LED_PIN1, OUTPUT);
+  digitalWrite(LED_PIN1, HIGH);
+  pinMode(LED_PIN2, OUTPUT);
+  digitalWrite(LED_PIN2, LOW);
+  pinMode(IR_SEND, OUTPUT);
+  digitalWrite(IR_SEND, LOW);
   // Don't need to set ANALOG_PIN as input, 
   // that's all it can be.
 }
-
