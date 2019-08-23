@@ -1,29 +1,31 @@
+/**************************
+ * Mashup of the ThingM Example code from SparkFun and a sketch to build a roomba virtual wall. 
+ * Both modified to work with the Coin. 
+ * Please change your PSK password.
+ */
 #include <ESP8266WiFi.h>
-//#define LED_PIN1 D4
-//#define LED_PIN2 D8
-//#define IR_SEND D3
-//#define DIGITAL_PIN D5
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+#define ESP8266_LED D4
+#define ESP8266_LED2 D8
+
 //////////////////////
 // WiFi Definitions //
 //////////////////////
 const char WiFiAPPSK[] = "coinpass";
-
-/////////////////////
-// Pin Definitions //
-/////////////////////
-const int LED_PIN1 = D4; // Thing's onboard, green LED
-const int LED_PIN2 = D8;
-const int IR_SEND=D3;
-const int ANALOG_PIN = A0; // The only analog pin on the Thing
-const int DIGITAL_PIN = D5; // Digital pin to be read\
-
+bool runWall=false;
 WiFiServer server(80);
+const uint16_t kIrLed = D2;
+IRsend irsend(kIrLed);
+
 
 void setup() 
 {
   initHardware();
   setupWiFi();
+  irsend.begin();
   server.begin();
+
 }
 
 void loop() 
@@ -31,6 +33,8 @@ void loop()
   // Check if a client has connected
   WiFiClient client = server.available();
   if (!client) {
+    if(runWall)
+      roomba_send(137);
     return;
   }
 
@@ -48,13 +52,14 @@ void loop()
     val = 1; // Will write LED high
   else if (req.indexOf("/read") != -1)
     val = -2; // Will print pin reads
+ 
   // Otherwise request will be invalid. We'll say as much in HTML
 
   // Set GPIO5 according to the request
   if (val >= 0){
-   digitalWrite(LED_PIN2, val);
-   digitalWrite(IR_SEND, val);
-   digitalWrite(LED_PIN1, val);
+   digitalWrite(ESP8266_LED2, val);
+   digitalWrite(ESP8266_LED, val);
+   digitalWrite(kIrLed, val);
   }
 
   client.flush();
@@ -70,12 +75,10 @@ void loop()
     s += (val)?"on":"off";
   }
   else if (val == -2)
-  { // If we're reading pins, print out those values:
-    s += "Analog Pin = ";
-    s += String(analogRead(ANALOG_PIN));
-    s += "<br>"; // Go to the next line.
-    s += "Digital Pin 12 = ";
-    s += String(digitalRead(DIGITAL_PIN));
+  { // If we're reading pins, print out those values: *for later expansion
+    runWall=!(runWall);
+    s += "Roomba Wall is ";
+    s += (runWall)?"on":"off";
   }
   else
   {
@@ -87,10 +90,7 @@ void loop()
   client.print(s);
   delay(1);
   Serial.println("Client disonnected");
-
-  // The client will actually be disconnected 
-  // when the function returns and 'client' object is detroyed
-  
+ 
 }
 
 void setupWiFi()
@@ -118,13 +118,55 @@ void setupWiFi()
 void initHardware()
 {
   Serial.begin(115200);
-  pinMode(DIGITAL_PIN, INPUT_PULLUP);
-  pinMode(LED_PIN1, OUTPUT);
-  digitalWrite(LED_PIN1, HIGH);
-  pinMode(LED_PIN2, OUTPUT);
-  digitalWrite(LED_PIN2, LOW);
-  pinMode(IR_SEND, OUTPUT);
-  digitalWrite(IR_SEND, LOW);
+  pinMode(ESP8266_LED, OUTPUT);
+  pinMode(ESP8266_LED2, OUTPUT);
+  digitalWrite(ESP8266_LED, LOW);
+  digitalWrite(ESP8266_LED2, HIGH);
+  
+  
+  
   // Don't need to set ANALOG_PIN as input, 
   // that's all it can be.
+}
+
+void roomba_send(int code) 
+{
+  Serial.print("Sending Roomba code ");
+  Serial.print(code);
+  int length = 8;
+  uint16_t raw[length*8];
+  unsigned int one_pulse = 3000;
+  unsigned int one_break = 1000;
+  unsigned int zero_pulse = one_break;
+  unsigned int zero_break = one_pulse;
+
+  int arrayposition = 0;
+  // Serial.println("");
+  for (int counter = length-1; counter >= 0; --counter) {
+    if(code & (1<<counter)) {
+      // Serial.print("1");
+      raw[arrayposition] = one_pulse;
+      raw[arrayposition+1] = one_break;
+    } 
+    else {
+      // Serial.print("0");
+      raw[arrayposition] = zero_pulse;
+      raw[arrayposition+1] = zero_break;
+    }
+    arrayposition = arrayposition + 2;
+  } 
+  for (int i = 0; i < 3; i++) {
+    irsend.sendRaw(raw, 15, 38);
+    delay(50);
+  }
+  Serial.println("");
+
+  
+  Serial.print("Raw timings:");
+   for (int z=0; z<length*2; z++) {
+   Serial.print(" ");
+   Serial.print(raw[z]);
+   }
+   Serial.print("\n\n");
+   
 }
