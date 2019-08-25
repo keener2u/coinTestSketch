@@ -15,7 +15,7 @@
 const char WiFiAPPSK[] = "coinpass";
 bool runWall=false;
 WiFiServer server(80);
-const uint16_t kIrLed = D2;
+const uint16_t kIrLed = D0;
 IRsend irsend(kIrLed);
 
 
